@@ -1,0 +1,39 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Environments
+.venv/
+env/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs / outputs
+runs/
+*.log
+
+# Checkpoints / weights
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.mlmodel
+*.ncnn
+
+# Builds / dist
+build/
+dist/
+*.egg-info/
+
+# Temporary
+*.tmp
+*.bak
+*.swp
+*.swo
