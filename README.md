@@ -1,14 +1,14 @@
 # SWUAV-DANet
 
-SWUAV-DANet ships two custom DAN modules: backbone **C2ACT** (orig. `C2TSSA_DYT`) and head **Detect_DAAH** (orig. `Detect_TADDH`). The repo keeps only the code needed for these modules; other Ultralytics functionality comes from the official `ultralytics` package.
+SWUAV-DANet: A Severe-Weather UAV Dataset and Dynamic AlignAir Network for Robust Aerial Vehicle Detection.
 
 ## Repository Structure
 
-- `configs/DANet.yaml`: DAN model YAML referencing `C2ACT` and `Detect_DAAH`.
-- `swuav_dan/modules/c2act.py`: C2ACT implementation (DynamicTanh, TSSAlock_DYT).
-- `swuav_dan/heads/daah.py`: Detect_DAAH implementation (TaskDecomposition, DyDCNv2, etc.).
-- `swuav_dan/registry.py`: registers custom modules into Ultralytics for YAML parsing.
-- `requirements.txt`: depends on `ultralytics>=8.2.0` and related libs.
+- `configs/DANet.yaml`: DANet model YAML 
+- `swuav_dan/modules/c2act.py`: C2ACT implementation.
+- `swuav_dan/heads/daah.py`: Detect_DAAH implementation.
+- `swuav_dan/registry.py`: register.
+- `requirements.txt`
 - `scripts/`: train/val/predict/export helpers.
 - `LICENSE` / `CONTRIBUTING.md` / `CHANGELOG.md`: project meta.
 
@@ -66,9 +66,3 @@ python scripts/export.py \
   --imgsz 640
 ```
 Formats: `onnx/torchscript/engine/openvino/...`; toggles: `--half`, `--dynamic`, `--simplify`, etc.
-
-## Notes
-
-- Only DAN-related modules are kept; extraneous files removed.
-- Training/inference logic reuses Ultralytics defaults to mirror original behavior.
-- To reuse modules elsewhere: `pip install -e .` and `import swuav_dan`.
