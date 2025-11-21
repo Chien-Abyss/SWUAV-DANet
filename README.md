@@ -1,16 +1,16 @@
 # SWUAV-DANet
 
-SWUAV-DANet 提供 DAN 模型中自定义的两个核心模块：骨干的 **C2ACT**（原 `C2TSSA_DYT`）与检测头 **Detect_DAAH**（原 `Detect_TADDH`）。为了保持仓库精简，我们只保留与这两个模块相关的实现，其他 Ultralytics 功能仍通过官方 `ultralytics` 包获得。
+SWUAV-DANet 提供 DAN 模型中自定义的两个核心模块：骨干的 **C2ACT**（原 `C2TSSA_DYT`）与检测头 **Detect_DAAH**（原 `Detect_TADDH`）。
 
 ## 仓库结构
 
-- `configs/DANet.yaml`：DAN 模型 YAML，直接引用 `C2ACT` 与 `Detect_DAAH`。
-- `swuav_dan/modules/c2act.py`：完整的 C2ACT（含 DynamicTanh、TSSAlock_DYT）实现。
-- `swuav_dan/heads/daah.py`：完整的 Detect_DAAH 实现（TaskDecomposition、DyDCNv2 对齐等）。
-- `swuav_dan/registry.py`：把上述类注册进 Ultralytics，使自定义 YAML 可以被正常解析。
-- `requirements.txt`：仅依赖官方 `ultralytics>=8.2.0`，安装后即可运行。
+- `configs/DANet.yaml`：DAN 模型 YAML
+- `swuav_dan/modules/c2act.py`：完整的 C2ACT实现。
+- `swuav_dan/heads/daah.py`：完整的 Detect_DAAH 实现。
+- `swuav_dan/registry.py`：注册。
+- `requirements.txt`：依赖。
 - `scripts/`：训练、验证、推理、导出工具脚本。
-- `LICENSE` / `CONTRIBUTING.md` / `CHANGELOG.md`：基础工程文件，便于开源协作。
+- `LICENSE` / `CONTRIBUTING.md` / `CHANGELOG.md`：基础工程文件。
 
 ## 安装与训练
 
@@ -32,8 +32,8 @@ python scripts/train.py \
   --imgsz 640
 ```
 
-默认训练策略（与论文一致）：
-- 优化器：SGD，初始学习率 `0.01`，动量 `0.937`，权值衰减 `0.0005`
+默认训练策略：
+- 优化器：SGD，初始学习率 `0.001`，动量 `0.937`，权值衰减 `0.0005`
 - 训练轮数 `200`，批大小 `16`
 - 输入图像 letterbox 到 `640×640`
 - 其余超参沿用 Ultralytics 默认设置  
