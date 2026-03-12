@@ -1,29 +1,26 @@
 from __future__ import annotations
 
-import torch
 import torch.nn as nn
 
-from ultralytics.nn.modules.conv import Conv
+from ultralytics.nn.modules.block import C2f, C3, Bottleneck
 
 __all__ = ["C3k2"]
 
 
-class C3k2(nn.Module):
-    def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = False, g: int = 1, e: float = 0.5):
-        super().__init__()
-        self.c = max(1, int(c2 * e))
-        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
-        self.cv2 = Conv((2 + n) * self.c, c2, 1, 1)
-        self.m = nn.ModuleList(Conv(self.c, self.c, 3, 1, g=g, act=True) for _ in range(n))
-        self.use_shortcut = shortcut
+class C3k(C3):
+    """C3 block with configurable kernel size, aligned with the YOLO11 fork behavior."""
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y = self.cv1(x)
-        a, b = y.split((self.c, self.c), dim=1)
-        outputs = [b]
-        for conv in self.m:
-            out = conv(outputs[-1])
-            if self.use_shortcut:
-                out = out + outputs[-1]
-            outputs.append(out)
-        return self.cv2(torch.cat((a, *outputs), dim=1))
+    def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = True, g: int = 1, e: float = 0.5, k: int = 3):
+        super().__init__(c1, c2, n, shortcut, g, e)
+        c_ = int(c2 * e)
+        self.m = nn.Sequential(*(Bottleneck(c_, c_, shortcut, g, k=(k, k), e=1.0) for _ in range(n)))
+
+
+class C3k2(C2f):
+    """Faster CSP bottleneck used by YOLO11 model variants."""
+
+    def __init__(self, c1: int, c2: int, n: int = 1, c3k: bool = False, e: float = 0.5, g: int = 1, shortcut: bool = True):
+        super().__init__(c1, c2, n, shortcut, g, e)
+        self.m = nn.ModuleList(
+            C3k(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in range(n)
+        )

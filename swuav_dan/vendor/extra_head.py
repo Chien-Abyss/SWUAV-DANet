@@ -6,21 +6,56 @@ from typing import List, Sequence
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.ops import DeformConv2d
 
 from ultralytics.nn.modules.block import DFL
 from ultralytics.nn.modules.conv import Conv, autopad
 from ultralytics.utils.tal import dist2bbox, make_anchors
 
-__all__ = ["DyDCNv2", "Detect_DAAH"]
+__all__ = ["Scale", "Conv_GN", "TaskDecomposition", "DyDCNv2", "Detect_DAAH"]
 
 
 class DyDCNv2(nn.Module):
-    def __init__(self, c1: int, c2: int):
+    """A lightweight DyDCNv2 implementation with modulated deformable convolution."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        stride: int = 1,
+        norm_cfg: dict | None = None,
+    ) -> None:
         super().__init__()
-        self.conv = nn.Conv2d(c1, c2, 3, padding=1)
+        if norm_cfg is None:
+            norm_cfg = {"type": "GN", "num_groups": 16}
+        self.with_norm = norm_cfg is not None
+        bias = not self.with_norm
+        self.conv = DeformConv2d(in_channels, out_channels, 3, stride=stride, padding=1, bias=bias)
+
+        if self.with_norm:
+            norm_type = str(norm_cfg.get("type", "GN")).upper()
+            if norm_type == "GN":
+                groups = int(norm_cfg.get("num_groups", 16))
+                self.norm = nn.GroupNorm(groups, out_channels)
+            elif norm_type == "BN":
+                self.norm = nn.BatchNorm2d(out_channels)
+            else:
+                raise ValueError(f"Unsupported norm type for DyDCNv2: {norm_type}")
 
     def forward(self, x: torch.Tensor, offset: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        return self.conv(x)
+        x = self.conv(x.contiguous(), offset, mask)
+        if self.with_norm:
+            x = self.norm(x)
+        return x
+
+
+class Scale(nn.Module):
+    def __init__(self, scale: float = 1.0) -> None:
+        super().__init__()
+        self.scale = nn.Parameter(torch.tensor(scale, dtype=torch.float))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self.scale
 
 
 class Conv_GN(nn.Module):
@@ -96,7 +131,7 @@ class Detect_DAAH(nn.Module):
         self.cls_prob_conv2 = nn.Conv2d(hidc // 4, 1, 3, padding=1)
         self.cv2 = nn.Conv2d(hidc // 2, 4 * self.reg_max, 1)
         self.cv3 = nn.Conv2d(hidc // 2, self.nc, 1)
-        self.scale = nn.ModuleList(nn.Parameter(torch.ones(1)) for _ in ch)
+        self.scale = nn.ModuleList(Scale(1.0) for _ in ch)
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
 
     def forward(self, x: List[torch.Tensor]):
@@ -114,7 +149,7 @@ class Detect_DAAH(nn.Module):
             reg_feat = self.DyDCNV2(reg_feat, offset, mask)
 
             cls_prob = self.cls_prob_conv2(F.relu(self.cls_prob_conv1(feat))).sigmoid()
-            x[i] = torch.cat((self.scale[i] * self.cv2(reg_feat), self.cv3(cls_feat * cls_prob)), 1)
+            x[i] = torch.cat((self.scale[i](self.cv2(reg_feat)), self.cv3(cls_feat * cls_prob)), 1)
 
         if self.training:
             return x

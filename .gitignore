@@ -16,6 +16,7 @@ Thumbs.db
 
 # Logs / outputs
 runs/
+.yolo_cfg/
 *.log
 
 # Checkpoints / weights

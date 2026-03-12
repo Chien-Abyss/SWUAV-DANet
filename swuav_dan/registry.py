@@ -14,7 +14,7 @@ def _extend_unique(module: Any, attr: str, value: Any) -> None:
     setattr(module, attr, tuple(seq) + (value,))
 
 
-def _patch_parse_model(tasks_module: Any, detect_cls: Any, c2act_cls: Any) -> None:
+def _patch_parse_model(tasks_module: Any, detect_cls: Any, c2act_cls: Any, c3k2_cls: Any) -> None:
     if getattr(tasks_module, "_swuav_danet_patched", False):
         return
 
@@ -54,6 +54,7 @@ def _patch_parse_model(tasks_module: Any, detect_cls: Any, c2act_cls: Any) -> No
         tasks_module.DWConvTranspose2d,
         tasks_module.C3x,
         tasks_module.RepC3,
+        c3k2_cls,
         c2act_cls,
     }
     detect_blocks = {
@@ -70,7 +71,7 @@ def _patch_parse_model(tasks_module: Any, detect_cls: Any, c2act_cls: Any) -> No
         if cls is not None
     }
 
-    def parse_model(d: dict, ch: int, verbose: bool = True):
+    def parse_model(d: dict, ch: int, verbose: bool = True, warehouse_manager: Any = None):
         max_channels = float("inf")
         nc, act, scales = (d.get(x) for x in ("nc", "activation", "scales"))
         depth, width, kpt_shape = (d.get(x, 1.0) for x in ("depth_multiple", "width_multiple", "kpt_shape"))
@@ -124,6 +125,7 @@ def _patch_parse_model(tasks_module: Any, detect_cls: Any, c2act_cls: Any) -> No
                     tasks_module.C3Ghost,
                     tasks_module.C3x,
                     tasks_module.RepC3,
+                    c3k2_cls,
                     c2act_cls,
                 }:
                     args.insert(2, n)
@@ -185,9 +187,13 @@ def register(force: bool = False) -> None:
     import sys
 
     repo_root = Path(__file__).resolve().parents[1]
-    sibling_ultralytics = repo_root.parent / "ultralytics"
-    if sibling_ultralytics.exists() and str(sibling_ultralytics) not in sys.path:
-        sys.path.append(str(sibling_ultralytics))
+    sibling_candidates = (
+        repo_root.parent / "ultralytics",
+        repo_root.parent / "ultralytics-yolo11-main",
+    )
+    for sibling in sibling_candidates:
+        if sibling.exists() and str(sibling) not in sys.path:
+            sys.path.append(str(sibling))
 
     try:
         import ultralytics.nn.modules as ulty_modules
@@ -215,10 +221,10 @@ def register(force: bool = False) -> None:
                 "SWUAV-DANet requires Ultralytics to be installed and importable before registration."
             ) from exc
 
-    from ultralytics.nn.modules.block import C3
+    from .vendor.c3k2 import C3k2
 
-    setattr(ulty_modules, "C3k2", C3)
-    setattr(tasks, "C3k2", C3)
+    setattr(ulty_modules, "C3k2", C3k2)
+    setattr(tasks, "C3k2", C3k2)
 
     import sys
     from .vendor import extra_head as ulty_head, extra_transformer as ulty_transformer
@@ -236,6 +242,6 @@ def register(force: bool = False) -> None:
 
     _extend_unique(tasks, "C2PSA_CLASS", C2ACT)
     _extend_unique(tasks, "DETECT_CLASS", Detect_DAAH)
-    _patch_parse_model(tasks, Detect_DAAH, C2ACT)
+    _patch_parse_model(tasks, Detect_DAAH, C2ACT, C3k2)
 
     _REGISTERED = True
