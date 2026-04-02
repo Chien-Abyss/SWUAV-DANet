@@ -1,41 +1,24 @@
 # SWUAV-DANet
 
-SWUAV-DANet is a standalone implementation of DANet with two custom modules:
+SWUAV-DANet: Severe-Weather UAV dataset and Dynamic AlignAir Network for robust aerial vehicle detection.
 
-- `C2ACT` (renamed from `C2TSSA_DYT`)
-- `Detect_DAAH` (renamed from `Detect_TADDH`)
+## Repository Structure
+- `configs/DANet.yaml`: model YAML
+- `swuav_dan/`: CACT/DAAH modules and registry
+- `scripts/`: train / test / predict / export / visualize helpers
+- `requirements.txt`
+- `LICENSE`, `CONTRIBUTING.md`, `CHANGELOG.md`
 
-The goal is model-level equivalence with `yolo11-C2TSSA-DYT-TADHH.yaml`, while keeping this repository independent.
-
-## Repository Layout
-
-- `configs/DANet.yaml`: model YAML that uses `C2ACT` and `Detect_DAAH`
-- `swuav_dan/modules/c2act.py`: C2ACT wrapper
-- `swuav_dan/heads/daah.py`: Detect_DAAH head
-- `swuav_dan/vendor/extra_transformer.py`: AttentionTSSA + C2PSA/C2ACT support blocks
-- `swuav_dan/vendor/extra_head.py`: DyDCNv2 + head helper blocks
-- `swuav_dan/vendor/c3k2.py`: C3k2 implementation used by DANet YAML
-- `swuav_dan/registry.py`: runtime registration and parser patch
-- `scripts/`: train/val/predict/export/visualize entry scripts
-
-## Installation
-
+## Installation & Training
 ```bash
 git clone <repo-url> SWUAV-DANet
 cd SWUAV-DANet
-python -m venv .venv
-.\.venv\Scripts\activate
+python -m venv .venv && .\.venv\Scripts\activate   # or use conda
 pip install -r requirements.txt
 pip install -e .
 ```
 
-Notes:
-
-- The package sets `YOLO_CONFIG_DIR` to `<repo>/.yolo_cfg` by default to avoid permission issues writing Ultralytics settings.
-- `registry.py` can auto-detect a sibling `ultralytics-yolo11-main` folder if present.
-
-## Training
-
+### Train
 ```bash
 python scripts/train.py \
   --data path/to/data.yaml \
@@ -43,15 +26,9 @@ python scripts/train.py \
   --batch 16 \
   --imgsz 640
 ```
+Defaults: SGD (`lr0=0.001`, momentum `0.937`, weight decay `0.0005`), epochs 200, batch 16, imgsz 640. Common options: `--weights path/to/weights.pt`, `--project/--name`, `--resume`, `--no-amp`, `--device 0`.
 
-Defaults:
-
-- Optimizer: SGD
-- `lr0=0.01`, `momentum=0.937`, `weight_decay=0.0005`
-- `epochs=200`, `batch=16`, `imgsz=640`
-
-## Validation
-
+### Validate / Test
 ```bash
 python scripts/test.py \
   --weights runs/train/SWUAV-DANet/weights/best.pt \
@@ -59,8 +36,7 @@ python scripts/test.py \
   --split val
 ```
 
-## Inference
-
+### Inference
 ```bash
 python scripts/predict.py \
   --weights runs/train/SWUAV-DANet/weights/best.pt \
@@ -68,17 +44,43 @@ python scripts/predict.py \
   --conf 0.25
 ```
 
-## Export
-
+### Export
 ```bash
 python scripts/export.py \
   --weights runs/train/SWUAV-DANet/weights/best.pt \
   --format onnx \
   --imgsz 640
 ```
+Formats: onnx/torchscript/engine/openvino/...; toggles `--half`, `--dynamic`, `--simplify`.
 
-## Dataset YAML Example
+## Environment & Hardware
+- CUDA: 11.8 or 12.1 recommended (matches PyTorch 2.2.x/2.3.x). Use matching wheels if different.
+- GPU memory: single 12GB can run `batch=16, imgsz=640`; if tight, lower `--batch`/`--imgsz` or add `--no-amp`.
 
+## Dataset Access
+To request the SWUAV dataset, fill the table below and email to `chien_abyss@hainanu.edu.cn`; we will reply with download instructions.
+
+| Name | Institution | Email | Intended use | Public/Internal |
+| --- | --- | --- | --- | --- |
+|     |     |     |     |     |
+
+### Dataset Layout Example
+```
+data/
+  SWUAV/
+    images/
+      train/xxx.jpg
+      val/xxx.jpg
+      test/xxx.jpg
+    labels/
+      train/xxx.txt
+      val/xxx.txt
+      test/xxx.txt
+    data.yaml   # can be here or parent; adjust paths accordingly
+```
+Labels use YOLO txt: `class x_center y_center width height` (normalized to [0,1]); class order should match `nc`/`names`, e.g. `['car','truck','bus','van','freight car']`.
+
+Sample `data.yaml`:
 ```yaml
 path: data/SWUAV
 train: images/train
@@ -90,14 +92,24 @@ names: [car, truck, bus, van, freight car]
 ```
 
 ## Model Zoo
-
 | Model | Split | Epoch | AP (test) | Config | Download |
-| --- | --- | --- | --- | --- | --- |
-| SWUAV-DANet | SWUAV test | 200 | 46.9 | `configs/DANet.yaml` | [Baidu](https://pan.baidu.com/s/1IqAYTN8bfNN6ak7oqD-1qg?pwd=yupp) |
+| :---: | :---: | :---: | :--------: | :----: | :------: |
+| SWUAV-DANet | SWUAV test | 200 | 46.9 | [configs/DANet.yaml](configs/DANet.yaml) | [Baidu](https://pan.baidu.com/s/1IqAYTN8bfNN6ak7oqD-1qg?pwd=yupp) (pwd: `yupp`) |
+
+## Visualization Demo
+Run and save boxed results:
+```bash
+python scripts/visualize.py \
+  --weights path/to/best.pt \
+  --source path/to/images_or_dir \
+  --imgsz 640 \
+  --conf 0.25
+```
+Outputs in `runs/visualize/SWUAV-DANet-vis`; add `--show` to preview.
 
 ## Citation
-
-```bibtex
+If this repo or SWUAV-DANet helps your research, please cite:
+```
 @article{zhang2025swuavdanet,
   title   = {SWUAV-DANet: A Severe-Weather UAV Dataset and Dynamic AlignAir Network for Robust Aerial Vehicle Detection},
   author  = {Zhang, Longze and Guo, Keying},
@@ -105,3 +117,7 @@ names: [car, truck, bus, van, freight car]
   year    = {2025}
 }
 ```
+
+## Acknowledgements
+- Built on Ultralytics YOLO; thanks for the training/inference/export toolchain.
+- Thanks to the open-source community (YOLO series, DETR series, AOD-Net, TransWeather, etc.) for foundational ideas and baselines.
