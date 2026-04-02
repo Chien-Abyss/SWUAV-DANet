@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", type=str, default="auto", help="Device string accepted by Ultralytics (e.g. '0', 'cpu').")
     parser.add_argument("--workers", type=int, default=4, help="Number of dataloader workers.")
     parser.add_argument("--optimizer", type=str, default="SGD", help="Optimizer choice (defaults to SGD).")
-    parser.add_argument("--lr0", type=float, default=0.01, help="Initial learning rate.")
+    parser.add_argument("--lr0", type=float, default=0.001, help="Initial learning rate.")
     parser.add_argument("--lrf", type=float, default=None, help="Final learning rate factor override.")
     parser.add_argument("--momentum", type=float, default=0.937, help="SGD momentum.")
     parser.add_argument("--weight-decay", dest="weight_decay", type=float, default=0.0005, help="Weight decay.")
